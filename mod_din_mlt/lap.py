@@ -307,7 +307,7 @@ def simulacao_lts_completa(s, kappa, x, y, ds, fechar_loop):
 # =============================================================================
 if __name__ == "__main__":
     # Caminho do seu CSV (Ajuste se for Enduro, Autocross, etc)
-    caminho_pista = 'content/Pista_Auto_X_FSAE.csv'
+    caminho_pista = 'content/pista_slam.csv'
  
     # Parâmetro ds = 0.5 (Resolve a pista de meio em meio metro)
     ds_simulacao = 0.5

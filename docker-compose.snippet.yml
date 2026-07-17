@@ -1,0 +1,17 @@
+# Adicionar isso ao docker-compose.yml principal (o que já tem os
+# containers 1, 2 e 4). Rede compartilhada conforme seção 1.4.
+
+services:
+  container3-dil:
+    build: ./container3_dil
+    container_name: c3-dil
+    ports:
+      - "8090:8090"     # exposto no host também, pro vcu_bridge_example.py alcançar via localhost
+    volumes:
+      - ./data:/data     # onde o /export escreve run.csv / run.json
+    networks:
+      - eracing-net
+
+networks:
+  eracing-net:
+    external: true   # assumindo que já existe uma rede compartilhada definida no compose principal
