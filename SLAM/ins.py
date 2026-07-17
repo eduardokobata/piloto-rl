@@ -5,6 +5,12 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Quaternion
 import math
 import sys
+
+from cartographer_ros_msgs.srv import WriteState
+from std_srvs.srv import Empty 
+
+
+
 print("--- INS.PY INICIADO ---")
 sys.stdout.flush()
 
@@ -13,7 +19,12 @@ sys.stdout.flush()
 class InsBridgeNode(Node):
     def __init__(self):
         super().__init__('ins_bridge_node')
-        self.get_logger().info('Iniciando InsBridgeNode...') 
+        self.get_logger().info('Iniciando InsBridgeNode...')
+        
+        #Variaveis p/ salvar mapa
+        self.client_save_map = self.create_client(WriteState, '/write_state')        
+        self.lap_counter = 0
+        self.em_volta = False
         
         self.imu_pub = self.create_publisher(Imu, 'fsdsImu', 10)
         self.odom_pub = self.create_publisher(Odometry, 'fsdsOdometry', 10)
@@ -56,6 +67,23 @@ class InsBridgeNode(Node):
             odom_msg.child_frame_id = 'base_link'
             odom_msg.pose.pose.position.x = self.x
             odom_msg.pose.pose.position.y = self.y
+
+
+            dist_origem = math.sqrt(self.x**2 + self.y**2)
+        
+
+            if dist_origem > 5.0:
+                self.em_volta = True
+                
+            if self.em_volta and dist_origem < 0.5:
+                self.lap_counter += 1
+                self.get_logger().info(f"VOLTA {self.lap_counter} COMPLETADA!")
+                
+                self.salvar_mapa_automatizado()
+                
+                self.em_volta = False
+
+
            
             self.imu_pub.publish(imu_msg)
             self.odom_pub.publish(odom_msg)
@@ -63,6 +91,19 @@ class InsBridgeNode(Node):
             
         except Exception as e:
             self.get_logger().error(f'Erro no callback: {e}')
+
+    def salvar_mapa_automatizado(self):
+        if not self.client_save_map.service_is_ready():
+            self.get_logger().warn('Serviço de salvar mapa não está pronto ainda.')
+            return
+
+        request = WriteState.Request()
+        request.filename = f'/app/mapa_volta_{self.lap_counter}.pbstream'
+        request.include_unfinished_submaps = True
+        
+        future = self.client_save_map.call_async(request)
+        self.get_logger().info(f"Pedido de salvamento enviado para a volta {self.lap_counter}!")
+        os.system(f"chmod 666 {filename}")
 
 
 def main(args=None):
