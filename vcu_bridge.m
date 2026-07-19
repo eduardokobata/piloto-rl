@@ -21,8 +21,21 @@ disp(fieldnames(ref));  % ja confirmado: Ref_X, Ref_Y, Ref_Theta, Ref_V_Estatico
                          % Ref_V_Lancado, Pose_Timeseries, V_Timeseries, Tempo_Total
 
 load_system(MODEL_NAME);
-set_param(MODEL_NAME, 'SimulationCommand', 'start');
 
+% Inicia a simulação em modo pausado para compilar o modelo de forma síncrona
+fprintf("Compilando e inicializando o modelo Simulink '%s'...\n", MODEL_NAME);
+set_param(MODEL_NAME, 'SimulationCommand', 'pause');
+
+% Aguarda o modelo compilar e entrar em modo 'paused'
+while true
+    status = get_param(MODEL_NAME, 'SimulationStatus');
+    if strcmp(status, 'paused') || strcmp(status, 'running')
+        break;
+    end
+    pause(0.1);
+end
+fprintf("Modelo compilado e pronto (Status: %s).\n", status);
+ 
 % reset do episodio no container3
 webwrite(DIL_URL + "/reset", struct("source_label", "piloto"));
 
