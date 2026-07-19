@@ -10,16 +10,20 @@ DIL_URL = "http://localhost:8090";  % mesma maquina agora (Docker Desktop public
 MODEL_NAME = "vcu_control";               % nome do .slx, sem extensao
 DT = 0.02;
 
-% Trajetoria de referencia do MLT (Container 2), ja pensada pra Stanley
-% (repare no nome do arquivo). Carrega UMA VEZ, nao a cada loop.
-REF_PATH_FILE = "..\mod_din_mlt\output\Trajetoria_Stanley_vovozinha.mat";
+% Parametros do carro, devem bater com container3_dil/dil_container/physics.py
+MASS_KG = 220.0;
+MAX_MOTOR_FORCE_N = 4000.0;
+MAX_BRAKE_FORCE_N = 6000.0;
+
+% Trajetoria de referencia do MLT (Container 2) — nome real confirmado no
+% relatorio de validacao (SEM "_vovozinha", esse era so o arquivo antigo de
+% exemplo que ja estava no repo antes da integracao).
+REF_PATH_FILE = "..\mod_din_mlt\output\Trajetoria_Stanley.mat";
 ref = load(REF_PATH_FILE);
-% ref deve conter algo como ref.x, ref.y, ref.v_ref (ajustar nomes dos
-% campos reais depois de conferir o .mat com `load(REF_PATH_FILE)` e
-% `fieldnames(ref)` no MATLAB) — injete isso no workspace/bloco do Stanley
-% controller ANTES de iniciar o loop, ex:
-% set_param([MODEL_NAME '/ref_path_x'], 'Value', mat2str(ref.x));
-% set_param([MODEL_NAME '/ref_path_y'], 'Value', mat2str(ref.y));
+disp(fieldnames(ref));  % rode isso manualmente primeiro pra confirmar os
+                         % nomes reais dos campos antes de seguir — o resto
+                         % do script assume ref.x, ref.y, ref.v (ajustar se
+                         % os nomes reais forem diferentes)
 
 load_system(MODEL_NAME);
 set_param(MODEL_NAME, 'SimulationCommand', 'start');
@@ -32,27 +36,48 @@ try
         % 1. le estado atual do carro
         state = webread(DIL_URL + "/state");
 
-        % 2. injeta no workspace do modelo (ajustar nomes de bloco/sinal
-        %    reais do seu .slx — esses sao placeholders)
-        set_param([MODEL_NAME '/car_x'], 'Value', num2str(state.x));
-        set_param([MODEL_NAME '/car_y'], 'Value', num2str(state.y));
-        set_param([MODEL_NAME '/car_speed'], 'Value', num2str(state.speed_mps));
-        set_param([MODEL_NAME '/car_heading'], 'Value', num2str(state.heading_rad));
-        set_param([MODEL_NAME '/car_yaw_rate'], 'Value', num2str(state.yaw_rate_rad_s));
+        % 2. acha o ponto mais proximo na trajetoria de referencia (isso
+        %    substitui o HelperPathAnalyzer do exemplo oficial da MathWorks
+        %    — feito aqui no MATLAB puro, fora do Simulink, pra nao precisar
+        %    montar esse bloco no diagrama)
+        dists = hypot(ref.x - state.x, ref.y - state.y);
+        [~, idx] = min(dists);
+        ref_pose_x = ref.x(idx);
+        ref_pose_y = ref.y(idx);
+        if idx < length(ref.x)
+            ref_pose_yaw = atan2(ref.y(idx+1) - ref.y(idx), ref.x(idx+1) - ref.x(idx));
+        else
+            ref_pose_yaw = state.heading_rad;  % ultimo ponto da pista (ABERTA - sem próximo ponto pra apontar)
+        end
+        ref_vel = ref.v(idx);
 
-        % 3. avanca um passo de simulacao
+        % 3. injeta no workspace do modelo — via Inport blocks conectados
+        %    diretamente aos dois blocos Stanley (ver instrucoes no chat)
+        assignin('base', 'pose_x', state.x);
+        assignin('base', 'pose_y', state.y);
+        assignin('base', 'pose_yaw', rad2deg(state.heading_rad));  % blocos trabalham em GRAUS
+        assignin('base', 'curr_vel', state.speed_mps);
+        assignin('base', 'ref_pose_x', ref_pose_x);
+        assignin('base', 'ref_pose_y', ref_pose_y);
+        assignin('base', 'ref_pose_yaw', rad2deg(ref_pose_yaw));
+        assignin('base', 'ref_vel', ref_vel);
+
+        % 4. avanca um passo de simulacao
         set_param(MODEL_NAME, 'SimulationCommand', 'step');
 
-        % 4. le os comandos calculados dos DOIS blocos Stanley separados
-        %    (ajustar nomes reais de bloco/porta do seu .slx)
-        steer_cmd  = get_param([MODEL_NAME '/Lateral Controller Stanley'], 'RuntimeObject').OutputPort(1).Data;
-        torque_cmd = get_param([MODEL_NAME '/Longitudinal Controller Stanley'], 'RuntimeObject').OutputPort(1).Data;
-        brake_cmd  = get_param([MODEL_NAME '/Longitudinal Controller Stanley'], 'RuntimeObject').OutputPort(2).Data;
-        % ^ presumindo que o controlador longitudinal tem 2 saidas (torque, freio)
-        %   separadas — se for uma saida so (ex: -1..1, negativo=freio),
-        %   ajuste a divisao entre torque_cmd/brake_cmd aqui antes de mandar.
+        % 5. le os comandos calculados — SteerCmd em GRAUS, AccelCmd/DecelCmd
+        %    em m/s^2 (portas separadas, so uma delas != 0 por vez)
+        steer_cmd_deg = get_param([MODEL_NAME '/steer_cmd'], 'RuntimeObject').OutputPort(1).Data;
+        accel_cmd = get_param([MODEL_NAME '/accel_cmd'], 'RuntimeObject').OutputPort(1).Data;
+        decel_cmd = get_param([MODEL_NAME '/decel_cmd'], 'RuntimeObject').OutputPort(1).Data;
 
-        % 5. manda pro container3
+        % 6. converte pro contrato do container3 (radianos, torque/freio
+        %    normalizados -1..1 / 0..1 — ver physics.py)
+        steer_cmd = deg2rad(steer_cmd_deg);
+        torque_cmd = max(-1, min(1, accel_cmd * MASS_KG / MAX_MOTOR_FORCE_N));
+        brake_cmd = max(0, min(1, decel_cmd * MASS_KG / MAX_BRAKE_FORCE_N));
+
+        % 7. manda pro container3
         cmd = struct("torque_cmd", torque_cmd, "brake_cmd", brake_cmd, "steer_cmd", steer_cmd);
         resp = webwrite(DIL_URL + "/step", cmd);
 
