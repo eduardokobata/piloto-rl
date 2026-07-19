@@ -53,7 +53,10 @@ def carregar_pista_csv(path, ds=0.5, suavizacao=0.0, fechar_loop=None):
 # =============================================================================
 # 2. CARREGAMENTO DO ENVELOPE G-G-V
 # =============================================================================
+import os
 path_ggv = 'content/GG_Multiplas_Velocidades_Resultado.mat'
+if not os.path.exists(path_ggv) and os.path.exists('GG_Multiplas_Velocidades_Resultado.mat'):
+    path_ggv = 'GG_Multiplas_Velocidades_Resultado.mat'
  
 try:
     dados_mat = sio.loadmat(path_ggv)

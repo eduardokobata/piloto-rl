@@ -24,7 +24,15 @@ class DILSimulator:
         self.source_label = "unknown"  # "piloto" ou "ia", útil pro gráfico de overlay (seção 5)
 
     def reset(self, source_label: str = "unknown"):
-        self.car.reset()
+        import math
+        start_x, start_y = 0.0, 0.0
+        heading = 0.0
+        if self.track and self.track.points:
+            start_x, start_y = self.track.points[0]
+            if len(self.track.points) > 1:
+                p2 = self.track.points[1]
+                heading = math.atan2(p2[1] - start_y, p2[0] - start_x)
+        self.car.reset(CarState(x=start_x, y=start_y, heading_rad=heading))
         self.history = []
         self.lap_count = 0
         self._t_last_start = 0.0

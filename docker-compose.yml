@@ -1,0 +1,54 @@
+version: "3.8"
+
+# Integração via VOLUME COMPARTILHADO (não rede/ROS2 cruzando containers),
+# já que o SLAM ainda não expõe rosbridge e a troca real hoje é por CSV.
+
+services:
+  slam:
+    build: ./SLAM
+    container_name: c1-slam
+    environment:
+      - ROS_DOMAIN_ID=0     # já fixo no Dockerfile, repetido aqui só por clareza/override fácil
+    volumes:
+      # O ins.py escreve a trajetória em '/app/trajetoria_volta_{lap}.csv'.
+      # Apontamos o volume compartilhado para '/app' para capturar esse arquivo.
+      - shared-track-data:/app
+    networks:
+      - eracing-net
+    restart: unless-stopped
+
+  mod-din-mlt:
+    build: ./mod_din_mlt
+    container_name: c2-moddin-mlt
+    volumes:
+      # O mod_din_mlt lê de 'content/pista_slam.csv'.
+      # Sobrescrito com o volume compartilhado onde o SLAM salva as trajetórias.
+      # Nota: É necessário mapear/renomear o arquivo gerado (ex: trajetoria_volta_1.csv -> pista_slam.csv).
+      - shared-track-data:/app/content
+      - shared-outputs:/app/output       # onde lap.py salva Trajetoria/mapas — container 4 lê daqui
+    networks:
+      - eracing-net
+    # Como o mod_din_mlt executa um script linear (lap.py) e finaliza, ele deve rodar sob demanda.
+    # Disparar manualmente ou via script orquestrador:
+    #   docker compose run --rm mod-din-mlt
+    restart: "no"
+
+  container3-dil:
+    build: ./container3_dil
+    container_name: c3-dil
+    ports:
+      - "8090:8090"
+    volumes:
+      - shared-track-data:/data/track:ro   # para ler a pista a partir do volume compartilhado
+      - shared-outputs:/data/dil_runs      # onde /export escreve run.csv / run.json
+    networks:
+      - eracing-net
+    restart: unless-stopped
+
+networks:
+  eracing-net:
+    driver: bridge
+
+volumes:
+  shared-track-data:
+  shared-outputs:

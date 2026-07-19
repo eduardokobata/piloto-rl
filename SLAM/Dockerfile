@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /ros2_ws
 
 COPY ./src ./src
+COPY ./ins.py ./ins.py
 
 RUN source /opt/ros/humble/setup.bash && colcon build --symlink-install
 

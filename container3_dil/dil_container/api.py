@@ -19,11 +19,14 @@ from pydantic import BaseModel
 from .simulator import DILSimulator
 from .track import Track
 
+import os
+
 app = FastAPI(title="TelemetriaV2 - Container 3 DIL simplificado")
 
-# Pista sintética por padrão (fallback da seção 2). Trocar por Track.from_json_file(...)
-# assim que o Container 1/2 entregar a pista real.
-_sim = DILSimulator(track=Track.synthetic_ellipse())
+# Inicializa tentando carregar a pista real a partir do volume compartilhado.
+# Em caso de erro, cai automaticamente no fallback sintético (mixed corners).
+pista_csv_path = os.getenv("TRACK_CSV_PATH", "/data/track/pista_slam.csv")
+_sim = DILSimulator(track=Track.from_csv(pista_csv_path))
 
 
 class ResetRequest(BaseModel):
@@ -56,11 +59,21 @@ def step(req: StepRequest):
 
 @app.get("/state")
 def get_state():
-    return _sim.car.state.as_dict()
+    state_dict = _sim.car.state.as_dict()
+    state_dict["track_source"] = _sim.track.source
+    return state_dict
+
+
+@app.get("/track")
+def get_track():
+    return {
+        "track_source": _sim.track.source,
+        "points": _sim.track.points
+    }
 
 
 @app.post("/export")
-def export(path_csv: str = "/data/run.csv", path_json: str = "/data/run.json"):
+def export(path_csv: str = "/data/dil_runs/run.csv", path_json: str = "/data/dil_runs/run.json"):
     _sim.export_csv(path_csv)
     _sim.export_json(path_json)
     return {"ok": True, "n_records": len(_sim.history), "csv": path_csv, "json": path_json}

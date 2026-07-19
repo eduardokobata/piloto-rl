@@ -1,3 +1,5 @@
+from fileinput import filename
+
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
@@ -5,6 +7,7 @@ from nav_msgs.msg import Odometry
 import math
 import sys
 import os
+import shutil
 import csv
 
 print("--- INS.PY INICIADO (GERADOR DE CSV) ---")
@@ -82,6 +85,7 @@ class InsBridgeNode(Node):
 
     def salvar_trajetoria_csv(self):
         filename = f'/app/trajetoria_volta_{self.lap_counter}.csv'
+        latest_filename = '/app/pista_slam.csv'
         
         try:
             with open(filename, 'w') as f:
@@ -91,6 +95,11 @@ class InsBridgeNode(Node):
             
             os.system(f"chmod 666 {filename}")
             self.get_logger().info(f"Trajetória salva: {filename} com {len(self.trajetoria_buffer)} pontos.")
+            
+            # Copy to latest
+            shutil.copy(filename, latest_filename)
+            os.system(f"chmod 666 {latest_filename}")
+            self.get_logger().info(f"Cópia da trajetória mais recente salva em: {latest_filename}")
             
             self.trajetoria_buffer = []
             

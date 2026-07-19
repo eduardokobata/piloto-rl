@@ -13,6 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY lap.py .
 COPY content/ ./content/
-
+COPY content/GG_Multiplas_Velocidades_Resultado.mat .
 
 CMD ["python", "lap.py"]
