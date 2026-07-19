@@ -74,9 +74,9 @@ try
 
         % 5. le os comandos calculados — SteerCmd em GRAUS, AccelCmd/DecelCmd
         %    em m/s^2 (portas separadas, so uma delas != 0 por vez)
-        steer_cmd_deg = get_param([MODEL_NAME '/steer_cmd'], 'RuntimeObject').OutputPort(1).Data;
-        accel_cmd = get_param([MODEL_NAME '/accel_cmd'], 'RuntimeObject').OutputPort(1).Data;
-        decel_cmd = get_param([MODEL_NAME '/decel_cmd'], 'RuntimeObject').OutputPort(1).Data;
+        steer_cmd_deg = get_param(MODEL_NAME + "/steer_cmd", 'RuntimeObject').InputPort(1).Data;
+        accel_cmd     = get_param(MODEL_NAME + "/accel_cmd", 'RuntimeObject').InputPort(1).Data;
+        decel_cmd     = get_param(MODEL_NAME + "/decel_cmd", 'RuntimeObject').InputPort(1).Data;
 
         % 6. converte pro contrato do container3 (radianos, torque/freio
         %    normalizados -1..1 / 0..1 — ver physics.py)
