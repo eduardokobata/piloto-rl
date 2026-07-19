@@ -15,10 +15,12 @@ MASS_KG = 220.0;
 MAX_MOTOR_FORCE_N = 4000.0;
 MAX_BRAKE_FORCE_N = 6000.0;
 
-% Trajetoria de referencia do MLT (Container 2) — nome real confirmado no
-% relatorio de validacao (SEM "_vovozinha", esse era so o arquivo antigo de
-% exemplo que ja estava no repo antes da integracao).
-REF_PATH_FILE = "..\mod_din_mlt\output\Trajetoria_Stanley.mat";
+% Trajetoria de referencia do MLT (Container 2). NOTA: o lap.py imprime no
+% terminal "Trajetoria_Stanley.mat salvo com sucesso", mas o nome real do
+% arquivo gerado inclui o sufixo "_vovozinha" — o print message no script
+% esta desatualizado/errado, nao o comportamento real. Confirmado via
+% timestamp do arquivo batendo com a execucao do docker compose run.
+REF_PATH_FILE = "..\mod_din_mlt\output\Trajetoria_Stanley_vovozinha.mat";
 ref = load(REF_PATH_FILE);
 disp(fieldnames(ref));  % rode isso manualmente primeiro pra confirmar os
                          % nomes reais dos campos antes de seguir — o resto
