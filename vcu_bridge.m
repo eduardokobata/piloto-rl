@@ -72,11 +72,30 @@ try
         % 4. avanca um passo de simulacao
         set_param(MODEL_NAME, 'SimulationCommand', 'step');
 
-        % 5. le os comandos calculados — SteerCmd em GRAUS, AccelCmd/DecelCmd
-        %    em m/s^2 (portas separadas, so uma delas != 0 por vez)
-        steer_cmd_deg = get_param(MODEL_NAME + "/steer_cmd", 'RuntimeObject').InputPort(1).Data;
-        accel_cmd     = get_param(MODEL_NAME + "/accel_cmd", 'RuntimeObject').InputPort(1).Data;
-        decel_cmd     = get_param(MODEL_NAME + "/decel_cmd", 'RuntimeObject').InputPort(1).Data;
+        % 5. Localiza e le os comandos dos blocos (busca automatica por nome no diagrama)
+        steer_b = find_system(MODEL_NAME, 'Name', 'steer_cmd');
+        accel_b = find_system(MODEL_NAME, 'Name', 'accel_cmd');
+        decel_b = find_system(MODEL_NAME, 'Name', 'decel_cmd');
+
+        if isempty(steer_b) || isempty(accel_b) || isempty(decel_b)
+            fprintf("\n[ERRO DE BLOCO] Um ou mais blocos de saida ('steer_cmd', 'accel_cmd', 'decel_cmd') nao foram encontrados!\n");
+            fprintf("Lista de todos os blocos encontrados no modelo '%s':\n", MODEL_NAME);
+            disp(find_system(MODEL_NAME, 'Type', 'Block'));
+            error("Ajuste os nomes dos blocos no Simulink ou no vcu_bridge.m para corresponderem.");
+        end
+
+        steer_rto = get_param(steer_b{1}, 'RuntimeObject');
+        accel_rto = get_param(accel_b{1}, 'RuntimeObject');
+        decel_rto = get_param(decel_b{1}, 'RuntimeObject');
+
+        if isempty(steer_rto)
+            error("RuntimeObject do bloco '%s' nao esta ativo. O Simulink pode ter parado.", steer_b{1});
+        end
+
+        % Le a porta de entrada (sinal recebido pelo bloco de saida)
+        steer_cmd_deg = steer_rto.InputPort(1).Data;
+        accel_cmd     = accel_rto.InputPort(1).Data;
+        decel_cmd     = decel_rto.InputPort(1).Data;
 
         % 6. converte pro contrato do container3 (radianos, torque/freio
         %    normalizados -1..1 / 0..1 — ver physics.py)
