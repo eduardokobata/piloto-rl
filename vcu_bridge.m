@@ -15,17 +15,10 @@ MASS_KG = 220.0;
 MAX_MOTOR_FORCE_N = 4000.0;
 MAX_BRAKE_FORCE_N = 6000.0;
 
-% Trajetoria de referencia do MLT (Container 2). NOTA: o lap.py imprime no
-% terminal "Trajetoria_Stanley.mat salvo com sucesso", mas o nome real do
-% arquivo gerado inclui o sufixo "_vovozinha" — o print message no script
-% esta desatualizado/errado, nao o comportamento real. Confirmado via
-% timestamp do arquivo batendo com a execucao do docker compose run.
-REF_PATH_FILE = "..\mod_din_mlt\output\Trajetoria_Stanley_vovozinha.mat";
+REF_PATH_FILE = "mod_din_mlt\output\Trajetoria_Stanley_vovozinha.mat";
 ref = load(REF_PATH_FILE);
-disp(fieldnames(ref));  % rode isso manualmente primeiro pra confirmar os
-                         % nomes reais dos campos antes de seguir — o resto
-                         % do script assume ref.x, ref.y, ref.v (ajustar se
-                         % os nomes reais forem diferentes)
+disp(fieldnames(ref));  % ja confirmado: Ref_X, Ref_Y, Ref_Theta, Ref_V_Estatico,
+                         % Ref_V_Lancado, Pose_Timeseries, V_Timeseries, Tempo_Total
 
 load_system(MODEL_NAME);
 set_param(MODEL_NAME, 'SimulationCommand', 'start');
@@ -42,16 +35,15 @@ try
         %    substitui o HelperPathAnalyzer do exemplo oficial da MathWorks
         %    — feito aqui no MATLAB puro, fora do Simulink, pra nao precisar
         %    montar esse bloco no diagrama)
-        dists = hypot(ref.x - state.x, ref.y - state.y);
+        dists = hypot(ref.Ref_X - state.x, ref.Ref_Y - state.y);
         [~, idx] = min(dists);
-        ref_pose_x = ref.x(idx);
-        ref_pose_y = ref.y(idx);
-        if idx < length(ref.x)
-            ref_pose_yaw = atan2(ref.y(idx+1) - ref.y(idx), ref.x(idx+1) - ref.x(idx));
-        else
-            ref_pose_yaw = state.heading_rad;  % ultimo ponto da pista (ABERTA - sem próximo ponto pra apontar)
-        end
-        ref_vel = ref.v(idx);
+        ref_pose_x = ref.Ref_X(idx);
+        ref_pose_y = ref.Ref_Y(idx);
+        ref_pose_yaw = ref.Ref_Theta(idx);  % ja vem pronto no .mat, nao precisa calcular
+        % NOTA: usando Ref_V_Lancado (volta lancada/rolling) como referencia
+        % de velocidade — troque para Ref_V_Estatico se o objetivo for
+        % largada parada em vez de volta em andamento.
+        ref_vel = ref.Ref_V_Lancado(idx);
 
         % 3. injeta no workspace do modelo — via Inport blocks conectados
         %    diretamente aos dois blocos Stanley (ver instrucoes no chat)
