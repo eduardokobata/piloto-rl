@@ -221,7 +221,7 @@ def simulacao_lts_completa(s, kappa, x, y, ds, fechar_loop):
     Pose_Timeseries = np.column_stack((t_array, x, y, theta))
     V_Timeseries = np.column_stack((t_array, v_profile))
  
-    sio.savemat('output/Trajetoria_Stanley_vovozinha.mat', {
+    mat_data = {
         'Ref_X': Ref_X,
         'Ref_Y': Ref_Y,
         'Ref_Theta': Ref_Theta,
@@ -229,8 +229,15 @@ def simulacao_lts_completa(s, kappa, x, y, ds, fechar_loop):
         'Ref_V_Lancado': v_profile_lancado.reshape(-1,1),
         'Pose_Timeseries': Pose_Timeseries,
         'V_Timeseries': V_Timeseries,
-        'Tempo_Total': tempo_total
-    })
+        'Tempo_Total': tempo_total,
+        # Lowercase fields for MATLAB/Simulink bridge compatibility
+        'x': x.flatten(),
+        'y': y.flatten(),
+        'v': v_profile_lancado.flatten()
+    }
+    
+    sio.savemat('output/Trajetoria_Stanley_vovozinha.mat', mat_data)
+    sio.savemat('output/Trajetoria_Stanley.mat', mat_data)
  
     print(">> EXPORTAÇÃO: 'Trajetoria_Stanley.mat' salvo com sucesso no diretorio output!")
     # =========================================================================
