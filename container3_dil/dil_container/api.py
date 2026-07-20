@@ -68,7 +68,10 @@ def get_state():
 def get_track():
     return {
         "track_source": _sim.track.source,
-        "points": _sim.track.points
+        "track_width_m": _sim.track.track_width_m,
+        "points": _sim.track.points,
+        "left_boundary": _sim.track.left_boundary,
+        "right_boundary": _sim.track.right_boundary
     }
 
 
