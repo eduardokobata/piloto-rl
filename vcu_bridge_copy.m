@@ -22,6 +22,12 @@ disp(fieldnames(ref));  % ja confirmado: Ref_X, Ref_Y, Ref_Theta, Ref_V_Estatico
 
 load_system(MODEL_NAME);
 
+% StopTime padrao do Simulink e finito (geralmente 10s simulados) — como
+% aqui quem controla a duracao e o loop externo do MATLAB, nao o proprio
+% modelo, precisa setar StopTime pra infinito ou ele para sozinho depois
+% de um tempo e desativa o RuntimeObject.
+set_param(MODEL_NAME, 'StopTime', 'inf');
+
 % Inicia a simulação e pausa logo em seguida — 'pause' sozinho não tem
 % efeito num modelo parado (só transiciona running->paused), por isso
 % precisa do 'start' antes.
@@ -83,7 +89,7 @@ try
         decel_rto = get_param([MODEL_NAME '/decel_cmd'], 'RuntimeObject');
 
         if isempty(steer_rto) || isempty(accel_rto) || isempty(decel_rto)
-            error("RuntimeObject de algum bloco de saida nao esta ativo. O Simulink pode ter parado.");
+            error("RuntimeObject de algum bloco de saida nao esta ativo (SimulationStatus atual: %s). O Simulink pode ter parado.", get_param(MODEL_NAME, 'SimulationStatus'));
         end
 
         % Outport nao tem porta de saida propria — o valor que interessa e
