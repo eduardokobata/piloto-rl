@@ -22,14 +22,17 @@ disp(fieldnames(ref));  % ja confirmado: Ref_X, Ref_Y, Ref_Theta, Ref_V_Estatico
 
 load_system(MODEL_NAME);
 
-% Inicia a simulação em modo pausado para compilar o modelo de forma síncrona
+% Inicia a simulação e pausa logo em seguida — 'pause' sozinho não tem
+% efeito num modelo parado (só transiciona running->paused), por isso
+% precisa do 'start' antes.
 fprintf("Compilando e inicializando o modelo Simulink '%s'...\n", MODEL_NAME);
+set_param(MODEL_NAME, 'SimulationCommand', 'start');
 set_param(MODEL_NAME, 'SimulationCommand', 'pause');
 
-% Aguarda o modelo compilar e entrar em modo 'paused'
+% Aguarda o modelo entrar de fato em modo 'paused'
 while true
     status = get_param(MODEL_NAME, 'SimulationStatus');
-    if strcmp(status, 'paused') || strcmp(status, 'running')
+    if strcmp(status, 'paused')
         break;
     end
     pause(0.1);
