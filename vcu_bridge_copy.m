@@ -7,7 +7,7 @@
 % Ajustar DIL_URL pro IP real do servidor.
 
 DIL_URL = "http://localhost:8090";  % mesma maquina agora (Docker Desktop publica a porta em localhost)
-MODEL_NAME = "vcu_control";               % nome do .slx, sem extensao
+MODEL_NAME = 'vcu_control';               % nome do .slx, sem extensao — ASPAS SIMPLES (char), nao duplas
 DT = 0.02;
 
 % Parametros do carro, devem bater com container3_dil/dil_container/physics.py
